@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, Image, Alert } from 'react-native';
+import { StyleSheet, View, Text, TextInput, TouchableOpacity, Image, Alert, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
+import { useNavigation } from '@react-navigation/native';
 
 const Registro = () => {
+  const [nombreTecnico, setNombreTecnico] = useState('');
   const [cedulaDirector, setCedulaDirector] = useState('');
   const [codigoCentro, setCodigoCentro] = useState('');
   const [motivo, setMotivo] = useState('');
@@ -15,15 +17,17 @@ const Registro = () => {
   const [longitud, setLongitud] = useState('');
   const [fecha, setFecha] = useState('');
   const [hora, setHora] = useState('');
+  const navigation = useNavigation();
 
   const guardarVisita = async () => {
-    if (!cedulaDirector || !codigoCentro || !motivo || !fecha || !hora || !latitud || !longitud) {
+    if (!nombreTecnico || !cedulaDirector || !codigoCentro || !motivo || !fecha || !hora || !latitud || !longitud) {
       Alert.alert('Error', 'Todos los campos son obligatorios.');
       return;
     }
-    const visita = { cedulaDirector, codigoCentro, motivo, foto, comentario, audio, latitud, longitud, fecha, hora };
+    const visita = { nombreTecnico, cedulaDirector, codigoCentro, motivo, foto, comentario, audio, latitud, longitud, fecha, hora };
     try {
       await AsyncStorage.setItem(`visita_${Date.now()}`, JSON.stringify(visita));
+      setNombreTecnico('');
       setCedulaDirector('');
       setCodigoCentro('');
       setMotivo('');
@@ -53,7 +57,7 @@ const Registro = () => {
         setFoto(result.assets[0].uri);
       }
     } catch (error) {
-      console.error('Error al Seleccionar la foto:', error);
+      console.error('Error al seleccionar la foto:', error);
       Alert.alert('Error', 'Ocurrió un error al seleccionar la foto.');
     }
   };
@@ -65,7 +69,7 @@ const Registro = () => {
         copyToCacheDirectory: false,
       });
       if (!result.canceled) {
-        setAudio(result.assets[0].uri);
+        setAudio(result.uri);
         Alert.alert('Éxito', 'Audio seleccionado correctamente.');
       } else {
         console.log('Selección de audio cancelada.');
@@ -77,28 +81,35 @@ const Registro = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.titulo}>REGISTRO DE VISITA</Text>
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.titulo}>Registro de Visita</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Nombre del Técnico"
+        value={nombreTecnico}
+        onChangeText={setNombreTecnico}
+        placeholderTextColor='black'
+      />
       <TextInput
         style={styles.input}
         placeholder="Cédula del Director"
         value={cedulaDirector}
         onChangeText={setCedulaDirector}
-        placeholderTextColor='white'
+        placeholderTextColor='black'
       />
       <TextInput
         style={styles.input}
         placeholder="Código del Centro"
         value={codigoCentro}
         onChangeText={setCodigoCentro}
-        placeholderTextColor='white'
+        placeholderTextColor='black'
       />
       <TextInput
         style={styles.input}
         placeholder="Motivo de la Visita"
         value={motivo}
         onChangeText={setMotivo}
-        placeholderTextColor='white'
+        placeholderTextColor='black'
       />
       <TextInput
         style={styles.input}
@@ -106,7 +117,7 @@ const Registro = () => {
         value={comentario}
         onChangeText={setComentario}
         multiline
-        placeholderTextColor='white'
+        placeholderTextColor='black'
       />
       <TextInput
         style={styles.input}
@@ -114,7 +125,7 @@ const Registro = () => {
         value={latitud}
         onChangeText={setLatitud}
         keyboardType="numeric"
-        placeholderTextColor='white'
+        placeholderTextColor='black'
       />
       <TextInput
         style={styles.input}
@@ -122,21 +133,21 @@ const Registro = () => {
         value={longitud}
         onChangeText={setLongitud}
         keyboardType="numeric"
-        placeholderTextColor='white'
+        placeholderTextColor='black'
       />
       <TextInput
         style={styles.input}
         placeholder="Fecha"
         value={fecha}
         onChangeText={setFecha}
-        placeholderTextColor='white'
+        placeholderTextColor='black'
       />
       <TextInput
         style={styles.input}
         placeholder="Hora"
         value={hora}
         onChangeText={setHora}
-        placeholderTextColor='white'
+        placeholderTextColor='black'
       />
       <TouchableOpacity style={styles.button} onPress={seleccionarFoto}>
         <Text style={styles.buttonText}>Seleccionar Foto</Text>
@@ -144,59 +155,66 @@ const Registro = () => {
       <TouchableOpacity style={styles.button} onPress={seleccionarAudio}>
         <Text style={styles.buttonText}>Seleccionar Audio</Text>
       </TouchableOpacity>
+      {foto && <Image source={{ uri: foto }} style={styles.image} />}
       <TouchableOpacity style={styles.buttonGuardar} onPress={guardarVisita}>
         <Text style={styles.buttonText}>Guardar Visita</Text>
       </TouchableOpacity>
-      {foto && <Image source={{ uri: foto }} style={styles.image} />}
-    </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    justifyContent: 'center',
+    flexGrow: 1,
+    justifyContent: 'flex-start',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: 'black',
+    backgroundColor: '#f4f4f4',
   },
   titulo: {
-    color: 'white',
-    fontSize: 25,
-    marginBottom: 30,
+    color: '#333',
+    fontSize: 24,
+    marginBottom: 20,
+    fontWeight: 'bold',
   },
   input: {
     borderWidth: 1,
     borderColor: '#ccc',
-    padding: 10,
-    marginBottom: 10,
-    color: 'white',
-    width: '80%',
-    textAlign: 'center',
+    padding: 12,
+    marginBottom: 15,
+    color: '#333',
+    width: '100%',
+    borderRadius: 8,
+    backgroundColor: 'white',
   },
   image: {
     width: 200,
     height: 200,
     marginTop: 20,
+    borderRadius: 8,
   },
   button: {
     backgroundColor: '#3498db',
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 20,
-    borderRadius: 5,
-    marginBottom: 10,
+    borderRadius: 8,
+    marginVertical: 10,
+    width: '100%',
+    alignItems: 'center',
   },
   buttonGuardar: {
     backgroundColor: '#27ae60',
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 20,
-    borderRadius: 5,
-    marginBottom: 10,
+    borderRadius: 8,
+    marginVertical: 10,
+    width: '100%',
+    alignItems: 'center',
   },
   buttonText: {
     color: 'white',
     fontSize: 16,
-    textAlign: 'center',
+    fontWeight: 'bold',
   },
 });
 

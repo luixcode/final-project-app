@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, TextInput, FlatList, TouchableOpacity, Image, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
+import EstadoDelClima from './EstadoDeClima';
 
 const Lista = () => {
   const [visitas, setVisitas] = useState([]);
@@ -9,52 +10,62 @@ const Lista = () => {
   const [visitaSeleccionada, setVisitaSeleccionada] = useState(null);
   const [sound, setSound] = useState(null);
   const [codigoBusqueda, setCodigoBusqueda] = useState('');
-  const [resultadoBusqueda, setResultadoBusqueda] = useState(null);
+  const [mostrarClima, setMostrarClima] = useState(false);
 
   useEffect(() => {
     cargarVisitas();
-  }, []);
+  }, [visitas]);
 
   const cargarVisitas = async () => {
     try {
       const keys = await AsyncStorage.getAllKeys();
       const visitasGuardadas = await AsyncStorage.multiGet(keys);
-      const visitasParseadas = visitasGuardadas.map(([key, value]) => {
-        return value ? JSON.parse(value) : null;
-      }).filter(visita => visita !== null);
+      const visitasParseadas = visitasGuardadas
+        .map(([key, value]) => (value ? JSON.parse(value) : null))
+        .filter(visita => visita !== null);
       setVisitas(visitasParseadas);
     } catch (error) {
       console.error('Error al cargar visitas:', error);
+      Alert.alert('Error', 'Ocurrió un error al cargar las visitas.');
     }
   };
 
   const buscarVisita = () => {
     const resultado = visitas.find(visita => visita.codigoCentro === codigoBusqueda || visita.cedulaDirector === codigoBusqueda);
     if (resultado) {
-        setVisitaSeleccionada(resultado);
+      setVisitaSeleccionada(resultado);
       setMostrarDetalle(true);
+      setMostrarClima(false);
     } else {
-      Alert.alert('No encontrado', 'No se encontraron detalles para el código de centro o Cedula proporcionado.');
+      Alert.alert('No encontrado', 'No se encontraron detalles para el código de centro o Cédula proporcionado.');
     }
   };
 
   const renderItemVisita = ({ item }) => (
-    <TouchableOpacity style={styles.itemContainer} onPress={() => verDetalleVisita(item)}>
+    <View style={styles.itemContainer}>
       <View style={styles.item}>
-        <Text>{item.codigoCentro}</Text>
+        {item.foto && <Image source={{ uri: item.foto }} style={styles.image} />}
+        <Text style={styles.itemText}>Código del Centro: {item.codigoCentro}</Text>
+        <Text style={styles.itemSubtext}>Motivo: {item.motivo}</Text>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={() => verDetalleVisita(item)}
+        >
+          <Text style={styles.buttonText}>Ver Detalle</Text>
+        </TouchableOpacity>
       </View>
-    </TouchableOpacity>
+    </View>
   );
 
   const verDetalleVisita = (visita) => {
     setVisitaSeleccionada(visita);
     setMostrarDetalle(true);
+    setMostrarClima(false);
   };
 
   const regresarAVisitas = async () => {
     setMostrarDetalle(false);
     setVisitaSeleccionada(null);
-    setResultadoBusqueda(null);
     if (sound) {
       await sound.stopAsync();
       await sound.unloadAsync();
@@ -64,9 +75,14 @@ const Lista = () => {
 
   const reproducirAudio = async () => {
     if (visitaSeleccionada?.audio) {
-      const { sound } = await Audio.Sound.createAsync({ uri: visitaSeleccionada.audio });
-      setSound(sound);
-      await sound.playAsync();
+      try {
+        const { sound } = await Audio.Sound.createAsync({ uri: visitaSeleccionada.audio });
+        setSound(sound);
+        await sound.playAsync();
+      } catch (error) {
+        console.error('Error al reproducir el audio:', error);
+        Alert.alert('Error', 'Ocurrió un error al reproducir el audio.');
+      }
     } else {
       Alert.alert('Error', 'No hay audio disponible para esta visita.');
     }
@@ -87,46 +103,62 @@ const Lista = () => {
     <View style={styles.container}>
       {!mostrarDetalle ? (
         <View style={styles.listaContainer}>
-              <Text style={styles.text}>Visitas</Text>
+          <Text style={styles.title}>Visitas Registradas</Text>
           <TextInput
             style={styles.input}
-            placeholder="Código del Centro o Cedula Del Director"
+            placeholder="Código del Centro o Cédula Del Director"
             value={codigoBusqueda}
             onChangeText={setCodigoBusqueda}
-            placeholderTextColor='white'
+            placeholderTextColor='black'
           />
           <TouchableOpacity style={styles.button} onPress={buscarVisita}>
             <Text style={styles.buttonText}>Buscar</Text>
           </TouchableOpacity>
-        
           <FlatList
             data={visitas}
             renderItem={renderItemVisita}
-            keyExtractor={(item, index) => `${index}`}
+            keyExtractor={(item) => item.codigoCentro || item.cedulaDirector}
           />
-          <TouchableOpacity style={styles.button} onPress={borrarTodasLasVisitas}>
+          <TouchableOpacity style={styles.button2} onPress={borrarTodasLasVisitas}>
             <Text style={styles.buttonText}>Borrar Visitas</Text>
           </TouchableOpacity>
         </View>
       ) : (
         <View style={styles.detalleVisita}>
           {visitaSeleccionada?.foto && <Image source={{ uri: visitaSeleccionada.foto }} style={styles.image} />}
-          <Text style={styles.textD}>Cédula del Director: {visitaSeleccionada?.cedulaDirector}</Text>
-          <Text style={styles.textD}>Código del Centro: {visitaSeleccionada?.codigoCentro}</Text>
-          <Text style={styles.textD}>Motivo: {visitaSeleccionada?.motivo}</Text>
-          <Text style={styles.textD}>Comentario: {visitaSeleccionada?.comentario}</Text>
-          <Text style={styles.textD}>Latitud: {visitaSeleccionada?.latitud}</Text>
-          <Text style={styles.textD}>Longitud: {visitaSeleccionada?.longitud}</Text>
-          <Text style={styles.textD}>Fecha: {visitaSeleccionada?.fecha}</Text>
-          <Text style={styles.textD}>Hora: {visitaSeleccionada?.hora}</Text>
+          
+          <Text style={styles.detailText}>Cédula del Director: {visitaSeleccionada?.cedulaDirector}</Text>
+          <Text style={styles.detailText}>Código del Centro: {visitaSeleccionada?.codigoCentro}</Text>
+          <Text style={styles.detailText}>Motivo: {visitaSeleccionada?.motivo}</Text>
+          <Text style={styles.detailText}>Comentario: {visitaSeleccionada?.comentario}</Text>
+          <Text style={styles.detailText}>Latitud: {visitaSeleccionada?.latitud}</Text>
+          <Text style={styles.detailText}>Longitud: {visitaSeleccionada?.longitud}</Text>
+          <Text style={styles.detailText}>Fecha: {visitaSeleccionada?.fecha}</Text>
+          <Text style={styles.detailText}>Hora: {visitaSeleccionada?.hora}</Text>
+          
           {visitaSeleccionada?.audio && (
-            <TouchableOpacity style={styles.button} onPress={reproducirAudio}>
+           
+           <TouchableOpacity style={styles.button} onPress={reproducirAudio}>
               <Text style={styles.buttonText}>Reproducir Audio</Text>
             </TouchableOpacity>
           )}
+
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => setMostrarClima(!mostrarClima)}
+          >
+
+            <Text style={styles.buttonText}>Ver Clima</Text>
+
+          </TouchableOpacity>
+          {mostrarClima && visitaSeleccionada && (
+            <EstadoDelClima latitud={visitaSeleccionada.latitud} longitud={visitaSeleccionada.longitud} />
+          )}
+
           <TouchableOpacity style={styles.button} onPress={regresarAVisitas}>
             <Text style={styles.buttonText}>Regresar</Text>
           </TouchableOpacity>
+
         </View>
       )}
     </View>
@@ -139,68 +171,94 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: 'black',
+    backgroundColor: '#eaeaea',
   },
   listaContainer: {
     flex: 1,
     width: '100%',
     alignItems: 'center',
+    paddingHorizontal: 10,
   },
   itemContainer: {
     width: '100%',
+    marginBottom: 10,
   },
   item: {
-    backgroundColor: 'white',
-    padding: 20,
-    marginVertical: 10,
-    borderRadius: 10,
+    backgroundColor: '#ffffff',
+    padding: 15,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  itemText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  itemSubtext: {
+    fontSize: 16,
+    color: '#666',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  button: {
+    backgroundColor: '#3498db',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginVertical: 5,
+    alignItems: 'center',
+  },
+  button2: {
+    backgroundColor: 'red',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginVertical: 5,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  image: {
+    width: '100%',
+    height: 200,
+    marginBottom: 20,
+    borderRadius: 8,
   },
   detalleVisita: {
     width: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
     padding: 20,
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
   },
-  text: {
-    fontSize: 25,
-    marginBottom: 10,
-    color: 'white',
-    textAlign: 'center',
-  },
-  textD: {
-    fontSize: 20,
-    marginBottom: 10,
-    color: 'white',
-    textAlign: 'center',
-  },
-  image: {
-    width: 300,
-    height: 300,
+  title: {
+    fontSize: 24,
     marginBottom: 20,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: '#3498db',
+    color: '#333',
+    fontWeight: 'bold',
   },
-  button: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 5,
-    marginVertical: 10,
-    backgroundColor: '#3498db',
-  },
-  buttonText: {
-    color: 'white',
+  detailText: {
     fontSize: 16,
-    textAlign: 'center',
+    marginBottom: 10,
+    color: '#333',
   },
   input: {
     borderWidth: 1,
     borderColor: '#ccc',
     padding: 10,
     marginBottom: 10,
-    color: 'white',
-    width: '80%',
-    textAlign: 'center',
+    color: '#333',
+    width: '100%',
+    borderRadius: 5,
+    backgroundColor: '#fff',
   },
 });
 
