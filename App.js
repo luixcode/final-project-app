@@ -9,7 +9,6 @@ import Registro from './components/Registro';
 import Mapa from './components/Mapa';
 import Lista from './components/ListarRegistros';
 import Noticias from './components/Noticas';
-import Horoscopo from './components/Horoscopo';
 
 const Drawer = createDrawerNavigator();
 const Stack = createStackNavigator();
@@ -27,7 +26,6 @@ const App = () => {
               <Drawer.Screen name="Mapa" component={Mapa} />
               <Drawer.Screen name="Lista de Visitas" component={Lista} />
               <Drawer.Screen name="Noticias" component={Noticias} />
-              <Drawer.Screen name="Horóscopo" component={Horoscopo} />
             </Drawer.Navigator>
           )}
         </Stack.Screen>
