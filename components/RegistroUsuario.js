@@ -55,7 +55,7 @@ const RegistroUsuario = ({ navigation }) => {
       <TouchableOpacity style={styles.button} onPress={registrarUsuario}>
         <Text style={styles.buttonText}>Registrar</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Login')}>
+      <TouchableOpacity style={styles.buttonir} onPress={() => navigation.navigate('Login')}>
         <Text style={styles.buttonText}>Ir a Login</Text>
       </TouchableOpacity>
     </View>
@@ -87,6 +87,15 @@ const styles = StyleSheet.create({
   },
   button: {
     backgroundColor: '#3498db',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginVertical: 10,
+    width: '100%',
+    alignItems: 'center',
+  },
+  buttonir: {
+    backgroundColor: '#27ae60',
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 8,

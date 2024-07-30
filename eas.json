@@ -1,0 +1,18 @@
+{
+  "cli": {
+    "version": ">= 0.38.0"
+  },
+  "build": {
+    "preview": {
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "production": {
+      "android": {
+        "releaseChannel": "production",
+        "buildType": "apk"
+      }
+    }
+  }
+}

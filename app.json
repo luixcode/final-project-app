@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "proyectofinal",
+    "name": "dlld-proyectofinal",
     "slug": "proyectofinal",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -16,12 +16,18 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/vision.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.dauringonzalez.proyectofinal"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "ada81f19-81a2-4294-945c-07224784dde9"
+      }
     }
   }
 }

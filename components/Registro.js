@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, Image, Alert, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
+import { Audio } from 'expo-av';
 import { useNavigation } from '@react-navigation/native';
+import * as MediaLibrary from 'expo-media-library';
 
 const Registro = () => {
   const [nombreTecnico, setNombreTecnico] = useState('');
@@ -17,7 +19,28 @@ const Registro = () => {
   const [longitud, setLongitud] = useState('');
   const [fecha, setFecha] = useState('');
   const [hora, setHora] = useState('');
+  const [sound, setSound] = useState(null);
   const navigation = useNavigation();
+
+  useEffect(() => {
+    const requestPermissions = async () => {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permiso denegado', 'Necesitamos acceso a tus archivos para continuar.');
+      }
+    };
+
+    requestPermissions();
+  }, []);
+
+  const guardarCoordenadas = async () => {
+    try {
+      await AsyncStorage.setItem('latitud', latitud);
+      await AsyncStorage.setItem('longitud', longitud);
+    } catch (error) {
+      console.error('Error al guardar las coordenadas:', error);
+    }
+  };
 
   const guardarVisita = async () => {
     if (!nombreTecnico || !cedulaDirector || !codigoCentro || !motivo || !fecha || !hora || !latitud || !longitud) {
@@ -27,6 +50,7 @@ const Registro = () => {
     const visita = { nombreTecnico, cedulaDirector, codigoCentro, motivo, foto, comentario, audio, latitud, longitud, fecha, hora };
     try {
       await AsyncStorage.setItem(`visita_${Date.now()}`, JSON.stringify(visita));
+      await guardarCoordenadas();
       setNombreTecnico('');
       setCedulaDirector('');
       setCodigoCentro('');
@@ -38,6 +62,7 @@ const Registro = () => {
       setLongitud('');
       setFecha('');
       setHora('');
+      setSound(null);
       Alert.alert('Éxito', 'Visita guardada correctamente.');
     } catch (error) {
       console.error('Error al guardar la visita:', error);
@@ -69,7 +94,8 @@ const Registro = () => {
         copyToCacheDirectory: false,
       });
       if (!result.canceled) {
-        setAudio(result.uri);
+        setAudio(result.assets[0].uri);
+        console.log(audio);
         Alert.alert('Éxito', 'Audio seleccionado correctamente.');
       } else {
         console.log('Selección de audio cancelada.');
@@ -77,6 +103,37 @@ const Registro = () => {
     } catch (error) {
       console.error('Error al seleccionar el audio:', error);
       Alert.alert('Error', 'Ocurrió un error al seleccionar el audio.');
+    }
+  };
+
+  const reproducirAudio = async () => {
+    console.log(audio);
+    if (audio) {
+      try {
+        const { sound } = await Audio.Sound.createAsync({ uri: audio });
+        setSound(sound);
+        await sound.playAsync();
+      } catch (error) {
+        console.error('Error al reproducir el audio:', error);
+        Alert.alert('Error', 'Ocurrió un error al reproducir el audio.');
+      }
+    } else {
+      Alert.alert('Error', 'No se ha seleccionado ningún audio.');
+    }
+  };
+
+  const detenerAudio = async () => {
+    if (sound) {
+      try {
+        await sound.stopAsync();
+        await sound.unloadAsync();
+        setSound(null);
+      } catch (error) {
+        console.error('Error al detener el audio:', error);
+        Alert.alert('Error', 'Ocurrió un error al detener el audio.');
+      }
+    } else {
+      Alert.alert('Error', 'No hay audio en reproducción.');
     }
   };
 
@@ -156,6 +213,16 @@ const Registro = () => {
         <Text style={styles.buttonText}>Seleccionar Audio</Text>
       </TouchableOpacity>
       {foto && <Image source={{ uri: foto }} style={styles.image} />}
+      {audio && (
+        <View>
+          <TouchableOpacity style={styles.button} onPress={reproducirAudio}>
+            <Text style={styles.buttonText}>Reproducir Audio</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.button} onPress={detenerAudio}>
+            <Text style={styles.buttonText}>Detener Audio</Text>
+          </TouchableOpacity>
+        </View>
+      )}
       <TouchableOpacity style={styles.buttonGuardar} onPress={guardarVisita}>
         <Text style={styles.buttonText}>Guardar Visita</Text>
       </TouchableOpacity>
@@ -183,38 +250,35 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 15,
     color: '#333',
+    borderRadius: 5,
     width: '100%',
-    borderRadius: 8,
     backgroundColor: 'white',
   },
-  image: {
-    width: 200,
-    height: 200,
-    marginTop: 20,
-    borderRadius: 8,
-  },
   button: {
-    backgroundColor: '#3498db',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    marginVertical: 10,
+    backgroundColor: '#007bff',
+    padding: 10,
+    borderRadius: 5,
+    marginBottom: 15,
     width: '100%',
     alignItems: 'center',
   },
   buttonGuardar: {
-    backgroundColor: '#27ae60',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    marginVertical: 10,
+    backgroundColor: 'green',
+    padding: 10,
+    borderRadius: 5,
+    marginBottom: 15,
     width: '100%',
     alignItems: 'center',
   },
   buttonText: {
-    color: 'white',
+    color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  image: {
+    width: 200,
+    height: 200,
+    marginBottom: 15,
   },
 });
 

@@ -50,7 +50,7 @@ const Login = ({ navigation }) => {
       <TouchableOpacity style={styles.button} onPress={iniciarSesion}>
         <Text style={styles.buttonText}>Iniciar Sesión</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('RegistroUsuario')}>
+      <TouchableOpacity style={styles.buttonregistro} onPress={() => navigation.navigate('RegistroUsuario')}>
         <Text style={styles.buttonText}>Registrar Usuario</Text>
       </TouchableOpacity>
     </View>
@@ -81,6 +81,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
   },
   button: {
+    backgroundColor: '#27ae60',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginVertical: 10,
+    width: '100%',
+    alignItems: 'center',
+  },
+  buttonregistro:{
     backgroundColor: '#3498db',
     paddingVertical: 12,
     paddingHorizontal: 20,
