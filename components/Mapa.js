@@ -1,82 +1,72 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Alert, Text } from 'react-native';
+import { StyleSheet, View, Alert } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const Mapa = () => {
-  const [coordenadas, setCoordenadas] = useState([]);
-  const [selectedCoordinates, setSelectedCoordinates] = useState(null);
+  const [marcadores, setMarcadores] = useState([]);
+  const [region, setRegion] = useState(null);
 
   useEffect(() => {
-    cargarCoordenadas();
-  }, [coordenadas]);
+    cargarMarcadores();
+  }, []);
 
-  const cargarCoordenadas = async () => {
+  const cargarMarcadores = async () => {
     try {
       const keys = await AsyncStorage.getAllKeys();
-      const visitasGuardadas = await AsyncStorage.multiGet(keys);
-      const visitasParseadas = visitasGuardadas
-        .map(([key, value]) => (value ? JSON.parse(value) : null))
-        .filter(visita => visita && !isNaN(parseFloat(visita.latitud)) && !isNaN(parseFloat(visita.longitud)));
-      
-      if (visitasParseadas.length === 0) {
-        Alert.alert('No hay registros', 'No se encontraron coordenadas para mostrar en el mapa.');
+      const visitasKeys = keys.filter(key => key.startsWith('visita_'));
+      const visitas = await AsyncStorage.multiGet(visitasKeys);
+
+      const marcadores = visitas.map(([key, value]) => {
+        const visita = JSON.parse(value);
+        return {
+          latitud: parseFloat(visita.latitud),
+          longitud: parseFloat(visita.longitud),
+          codigoCentro: visita.codigoCentro,
+          motivo: visita.motivo,
+        };
+      });
+
+      if (marcadores.length > 0) {
+        // Centrar el mapa en la primera ubicación
+        const primeraUbicacion = marcadores[0];
+        setRegion({
+          latitude: primeraUbicacion.latitud,
+          longitude: primeraUbicacion.longitud,
+          latitudeDelta: 0.0922,
+          longitudeDelta: 0.0421,
+        });
       }
 
-      setCoordenadas(visitasParseadas);
+      setMarcadores(marcadores);
     } catch (error) {
-      console.error('Error al cargar coordenadas:', error);
-      Alert.alert('Error', 'Ocurrió un error al cargar las coordenadas.');
+      console.error('Error al cargar los marcadores:', error);
+      Alert.alert('Error', 'Ocurrió un error al cargar los marcadores.');
     }
-  };
-
-  const seleccionarCoordenadas = (lat, long) => {
-    setSelectedCoordinates({ latitud: lat, longitud: long });
-  };
-
-  if (coordenadas.length === 0) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.mensaje}>No hay coordenadas para mostrar en el mapa.</Text>
-      </View>
-    );
-  }
-
-  const initialRegion = {
-    latitude: coordenadas[0].latitud,
-    longitude: coordenadas[0].longitud,
-    latitudeDelta: 0.0922,
-    longitudeDelta: 0.0421,
   };
 
   return (
     <View style={styles.container}>
       <MapView
         style={styles.map}
-        initialRegion={initialRegion}
+        region={region || {
+          latitude: 37.78825,
+          longitude: -122.4324,
+          latitudeDelta: 0.0922,
+          longitudeDelta: 0.0421,
+        }}
       >
-        {coordenadas.map((visita, index) => (
+        {marcadores.map((marcador, index) => (
           <Marker
             key={index}
             coordinate={{
-              latitude: parseFloat(visita.latitud),
-              longitude: parseFloat(visita.longitud),
+              latitude: marcador.latitud,
+              longitude: marcador.longitud,
             }}
-            title={`Visita de ${visita.nombreTecnico}`}
-            description={`Código: ${visita.codigoCentro}\nMotivo: ${visita.motivo}`}
-            onPress={() => seleccionarCoordenadas(parseFloat(visita.latitud), parseFloat(visita.longitud))}
+            title={`Centro: ${marcador.codigoCentro}`}
+            description={`Motivo: ${marcador.motivo}`}
           />
         ))}
-        {selectedCoordinates && (
-          <Marker
-            coordinate={{
-              latitude: selectedCoordinates.latitud,
-              longitude: selectedCoordinates.longitud,
-            }}
-            title="Ubicación Seleccionada"
-            description="Esta es la ubicación seleccionada."
-          />
-        )}
       </MapView>
     </View>
   );
@@ -85,18 +75,12 @@ const Mapa = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     alignItems: 'center',
-    backgroundColor: 'black',
   },
   map: {
     width: '100%',
     height: '100%',
-  },
-  mensaje: {
-    color: 'white',
-    fontSize: 18,
-    textAlign: 'center',
   },
 });
 

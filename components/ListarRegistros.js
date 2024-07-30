@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, TextInput, FlatList, TouchableOpacity, Image, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
+import * as MediaLibrary from 'expo-media-library';
 import EstadoDelClima from './EstadoDeClima';
 
-const Lista = () => {
+const ListaRegistro = () => {
   const [visitas, setVisitas] = useState([]);
   const [mostrarDetalle, setMostrarDetalle] = useState(false);
   const [visitaSeleccionada, setVisitaSeleccionada] = useState(null);
@@ -14,12 +15,20 @@ const Lista = () => {
 
   useEffect(() => {
     cargarVisitas();
-  }, [visitas]);
+    requestPermissions();
+  }, []);
+
+  const requestPermissions = async () => {
+    const { status } = await MediaLibrary.requestPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permiso denegado', 'Necesitamos acceso a tus archivos para continuar.');
+    }}
 
   const cargarVisitas = async () => {
     try {
       const keys = await AsyncStorage.getAllKeys();
-      const visitasGuardadas = await AsyncStorage.multiGet(keys);
+      const visitasKeys = keys.filter(key => key.startsWith('visita_'));
+      const visitasGuardadas = await AsyncStorage.multiGet(visitasKeys);
       const visitasParseadas = visitasGuardadas
         .map(([key, value]) => (value ? JSON.parse(value) : null))
         .filter(visita => visita !== null);
@@ -76,21 +85,39 @@ const Lista = () => {
   const reproducirAudio = async () => {
     if (visitaSeleccionada?.audio) {
       try {
-        const { sound } = await Audio.Sound.createAsync({ uri: visitaSeleccionada.audio });
-        setSound(sound);
-        await sound.playAsync();
+        if (sound) {
+          // Si ya hay un audio en reproducción, detenerlo
+          await sound.stopAsync();
+          await sound.unloadAsync();
+          setSound(null);
+        }
+
+        const { sound: newSound } = await Audio.Sound.createAsync({ uri: visitaSeleccionada.audio });
+        setSound(newSound);
+        await newSound.playAsync();
+
       } catch (error) {
         console.error('Error al reproducir el audio:', error);
         Alert.alert('Error', 'Ocurrió un error al reproducir el audio.');
       }
     } else {
-      Alert.alert('Error', 'No hay audio disponible para esta visita.');
+      Alert.alert('Error', 'No se ha seleccionado ningún audio.');
+    }
+  };
+
+  const detenerAudio = async () => {
+    if (sound) {
+      await sound.stopAsync();
+      await sound.unloadAsync();
+      setSound(null);
     }
   };
 
   const borrarTodasLasVisitas = async () => {
     try {
-      await AsyncStorage.clear();
+      const keys = await AsyncStorage.getAllKeys();
+      const visitasKeys = keys.filter(key => key.startsWith('visita_'));
+      await AsyncStorage.multiRemove(visitasKeys);
       setVisitas([]);
       Alert.alert('Éxito', 'Todas las visitas han sido borradas correctamente.');
     } catch (error) {
@@ -106,7 +133,7 @@ const Lista = () => {
           <Text style={styles.title}>Visitas Registradas</Text>
           <TextInput
             style={styles.input}
-            placeholder="Código del Centro o Cédula Del Director"
+            placeholder="Código del Centro o Cédula del Director"
             value={codigoBusqueda}
             onChangeText={setCodigoBusqueda}
             placeholderTextColor='black'
@@ -119,6 +146,9 @@ const Lista = () => {
             renderItem={renderItemVisita}
             keyExtractor={(item) => item.codigoCentro || item.cedulaDirector}
           />
+          <TouchableOpacity style={styles.button} onPress={cargarVisitas}>
+            <Text style={styles.buttonText}>Actualizar</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.button2} onPress={borrarTodasLasVisitas}>
             <Text style={styles.buttonText}>Borrar Visitas</Text>
           </TouchableOpacity>
@@ -126,7 +156,6 @@ const Lista = () => {
       ) : (
         <View style={styles.detalleVisita}>
           {visitaSeleccionada?.foto && <Image source={{ uri: visitaSeleccionada.foto }} style={styles.image} />}
-          
           <Text style={styles.detailText}>Cédula del Director: {visitaSeleccionada?.cedulaDirector}</Text>
           <Text style={styles.detailText}>Código del Centro: {visitaSeleccionada?.codigoCentro}</Text>
           <Text style={styles.detailText}>Motivo: {visitaSeleccionada?.motivo}</Text>
@@ -135,30 +164,30 @@ const Lista = () => {
           <Text style={styles.detailText}>Longitud: {visitaSeleccionada?.longitud}</Text>
           <Text style={styles.detailText}>Fecha: {visitaSeleccionada?.fecha}</Text>
           <Text style={styles.detailText}>Hora: {visitaSeleccionada?.hora}</Text>
-          
           {visitaSeleccionada?.audio && (
-           
-           <TouchableOpacity style={styles.button} onPress={reproducirAudio}>
-              <Text style={styles.buttonText}>Reproducir Audio</Text>
-            </TouchableOpacity>
+            <View>
+              <TouchableOpacity style={styles.button} onPress={reproducirAudio}>
+                <Text style={styles.buttonText}>{sound ? 'Detener Audio' : 'Reproducir Audio'}</Text>
+              </TouchableOpacity>
+              {sound && (
+                <TouchableOpacity style={styles.button} onPress={detenerAudio}>
+                  <Text style={styles.buttonText}>Detener Audio</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           )}
-
           <TouchableOpacity
             style={styles.button}
             onPress={() => setMostrarClima(!mostrarClima)}
           >
-
             <Text style={styles.buttonText}>Ver Clima</Text>
-
           </TouchableOpacity>
           {mostrarClima && visitaSeleccionada && (
             <EstadoDelClima latitud={visitaSeleccionada.latitud} longitud={visitaSeleccionada.longitud} />
           )}
-
           <TouchableOpacity style={styles.button} onPress={regresarAVisitas}>
             <Text style={styles.buttonText}>Regresar</Text>
           </TouchableOpacity>
-
         </View>
       )}
     </View>
@@ -199,11 +228,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
   },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 10,
-  },
   button: {
     backgroundColor: '#3498db',
     paddingVertical: 10,
@@ -233,33 +257,30 @@ const styles = StyleSheet.create({
   },
   detalleVisita: {
     width: '100%',
-    padding: 20,
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ddd',
-  },
-  title: {
-    fontSize: 24,
-    marginBottom: 20,
-    color: '#333',
-    fontWeight: 'bold',
+    alignItems: 'center',
+    paddingHorizontal: 10,
   },
   detailText: {
     fontSize: 16,
-    marginBottom: 10,
+    marginBottom: 5,
     color: '#333',
   },
   input: {
+    height: 40,
+    borderColor: '#ddd',
     borderWidth: 1,
-    borderColor: '#ccc',
-    padding: 10,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    marginBottom: 10,
+    width: '100%',
+    backgroundColor: '#fff',
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: 'bold',
     marginBottom: 10,
     color: '#333',
-    width: '100%',
-    borderRadius: 5,
-    backgroundColor: '#fff',
   },
 });
 
-export default Lista;
+export default ListaRegistro;
